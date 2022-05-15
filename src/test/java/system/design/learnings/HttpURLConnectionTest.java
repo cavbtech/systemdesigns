@@ -88,7 +88,7 @@ public class HttpURLConnectionTest {
         }).collect(Collectors.toList());
 
         service.shutdown();
-        int totalHttpConnectionsOpened  = shcp.getTotalConnectionsOpened();
+        int totalHttpConnectionsOpened  = shcp.getOpenCunnections();
         long endTime                    = System.currentTimeMillis();
         long diff                       = endTime - startTime;
         long seconds                    = TimeUnit.MILLISECONDS.toSeconds(diff);

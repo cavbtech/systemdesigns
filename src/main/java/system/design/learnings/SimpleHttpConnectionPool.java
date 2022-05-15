@@ -15,7 +15,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * SimpleHttpConnectionPool caches pool of HttpConnections for various sites based on the site name.
+ * SimpleHttpConnectionPool caches pool of HttpURLConnections for various sites based on the site name.
  * As of now, it can hold only 100 connections i.,e 100 sites.  If cache exceeds 100, then it applies LRU
  * (least recently used) algorithm to evict the connection
  * As of now, it maintains only one connection per site.  It can be enhanced to hold multiple connections per site
@@ -35,8 +35,11 @@ public final class SimpleHttpConnectionPool implements PoolConnection {
     //Cache to hold connections based on the URL. This can any other data structure.  Map is easier to search with O(1)
     private final ConcurrentHashMap<String, HttpURLConnection> httpCache;
     //Deque to hold the list of connection strings in the order they created
+    // May be stack can be used with max capacity.  Will try later
     private final ConcurrentHashMap<String, Long> connectionLastUsed;
 
+    // Tried with Synchronization but that is going crazy. So, used locks
+    // Perhaps, reentrant condition locks can be better and again will try that later
     ReentrantReadWriteLock lock              = new ReentrantReadWriteLock();
     Lock writeLock                           = lock.writeLock();
     Lock readLock                            = lock.readLock();
@@ -54,7 +57,12 @@ public final class SimpleHttpConnectionPool implements PoolConnection {
         connectionLastUsed  = new ConcurrentHashMap<>();
     }
 
-    public int getTotalConnectionsOpened() {
+    /**
+     * getOpenCunnections shows number of open or avialble connections.  This may not be exactly max connections
+     * but certainly less than max connections
+     * @return
+     */
+    public int getOpenCunnections() {
         int totalConnections = 0;
         try{
             readLock.lock();
@@ -67,6 +75,10 @@ public final class SimpleHttpConnectionPool implements PoolConnection {
         return totalConnections;
     }
 
+    /**
+     * As this is called at the end of the program mostly, it doesnt need to be locked. However, used
+     * synchronized to avoid unforeseen issues
+     */
     public synchronized void closeAllConnections() {
         logger.info("connectionLastUsed=" + connectionLastUsed.size());
         connectionLastUsed.entrySet().forEach(x -> {
